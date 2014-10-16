@@ -94,11 +94,18 @@ def runRead(txt):
     except:
         print('ERROR while reading {}...'.format(txt))    
 
-def novelize(numsentence, txtfile):
-    novel = speak()
+def novelize(numsentence, txtfile, maxSentPara = 8):
+    novel = '\t' + speak()
+    sen = 1
     for i in range(0,numsentence - 1):
         temp = speak()
-        novel = novel + ' ' + temp
+        test = random.randint(sen, maxSentPara)
+        if test == maxSentPara:
+            novel = novel + '\n\t' + temp
+            sen = 1
+        else:
+            novel = novel + ' ' + temp
+            sen = sen + 1
     with open(txtfile, 'w') as f:
         f.write(novel)
 
