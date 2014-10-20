@@ -10,7 +10,7 @@ def prepstrlist(string):
     string = string.replace('\n',' ')
     for i in range(0,10):
         string = string.replace('  ',' ')
-    string.strip('()[]{}')
+    string.strip('()[]{}"')
     string = string.strip()
     lis = string.split(' ')
     return lis
@@ -22,7 +22,7 @@ def prepfilelist(txtfile):
     return prepstrlist(string)
     
 
-def appendword(key, appword):
+def appendoneword(sfile, key, appword):
     conn = sqlite3.connect(sfile)
     conn.isolation_level = None
     done = False
@@ -30,36 +30,66 @@ def appendword(key, appword):
         try:
             c = conn.cursor()
             t2 = (key.lower(),appword)
-            c.execute("SELECT count FROM words WHERE word=? AND subword=?",t2)
+            c.execute("SELECT count FROM oneword WHERE word=? AND subword=?",t2)
             try:
                 count = c.fetchall()[0][0]
                 t1 = (int(count) + 1,key,appword)
                 
-                c.execute("""UPDATE words
+                c.execute("""UPDATE oneword
                 SET count = ?
                 WHERE word=? AND subword=?;""",t1)
                 
             except:
-                c.execute("INSERT INTO words VALUES (?,?,?)",(key.lower(),appword,1))
+                c.execute("INSERT INTO oneword VALUES (?,?,?)",(key.lower(),appword,1))
+            done = True
+        except:
+            continue   
+    conn.close()
+    
+def appendtwoword(sfile, key1, key2, appword):
+    conn = sqlite3.connect(sfile)
+    conn.isolation_level = None
+    done = False
+    while done != True:
+        try:
+            c = conn.cursor()
+            t2 = (key1.lower(),key2.lower(),appword)
+            c.execute("SELECT count FROM twoword WHERE word1=? AND word2=? AND subword=?",t2)
+            try:
+                count = c.fetchall()[0][0]
+                t1 = (int(count) + 1,key1,key2,appword)
+                
+                c.execute("""UPDATE twoword
+                SET count = ?
+                WHERE word1=? AND word2=? AND subword=?;""",t1)
+                
+            except:
+                c.execute("INSERT INTO twoword VALUES (?,?,?,?)",(key1.lower(),key2.lower(),appword,1))
             done = True
         except:
             continue   
     conn.close()
     
     
-def read(strlist):
+def read(sfile, strlist):
+    prevword2 = '~start~'
     prevword = '~start~'
     for i in strlist:
-        appendword(prevword, i)
+        appendoneword(sfile, prevword, i)
+        appendtwoword(sfile, prevword2, prevword, i)
         if i[-1] in ['.','?','!']:
-            appendword(i, '~end~')
+            appendoneword(sfile, i, '~end~')
+            appendtwoword(sfile, prevword, i, '~end~')
             prevword = '~start~'
+            prevword2 = '~start~'
         else:
+            prevword2 = prevword
             prevword = i
-    appendword(prevword, '~end~')
+    appendoneword(sfile, prevword, '~end~')
+    appendtwoword(sfile, prevword2, prevword, '~end~')
 
     
-def speak(prevword = '~start~', string = ''):
+def onespeak(sfile, prevword = '~start~', string = ''):
     try:
         if prevword == '~end~':
             return string.strip().capitalize()
@@ -69,7 +99,7 @@ def speak(prevword = '~start~', string = ''):
             conn = sqlite3.connect(sfile)
             c = conn.cursor()
             t = (prevword,)
-            c.execute("SELECT * FROM words WHERE word=?",t)
+            c.execute("SELECT * FROM oneword WHERE word=?",t)
             lis = c.fetchall()
             conn.close()
             temp = []
@@ -80,55 +110,114 @@ def speak(prevword = '~start~', string = ''):
             if word == '~end~':
                 return string.strip().capitalize()
             string = string + ' ' + word
-            return speak(word, string)
+            return onespeak(sfile, word, string)
     except:
         pass
 
-    
-def runRead(txt):
-    strlist = prepfilelist('toRead\\' + txt)
-    print('Starting read of {}...'.format(txt))
+def twospeak(sfile, prevword2 = '~start~', prevword = '~start~', string = ''):
     try:
-        read(strlist)
+        if prevword == '~end~':
+            return string.strip().capitalize()
+        else:
+            if prevword != '~start~':
+                prevword = prevword.lower()
+            conn = sqlite3.connect(sfile)
+            c = conn.cursor()
+            t = (prevword2,prevword)
+            c.execute("SELECT * FROM twoword WHERE word1=? AND word2=?",t)
+            lis = c.fetchall()
+            conn.close()
+            temp = []
+            if len(lis) > 0:
+                for i in lis:
+                    for k in range(0,i[3]):
+                        temp.append(str(i[2]))
+                word = temp[random.randint(0, len(temp)-1)]
+            else:
+                conn = sqlite3.connect(sfile)
+                c = conn.cursor()
+                t = (prevword,)
+                c.execute("SELECT * FROM oneword WHERE word=?",t)
+                lis = c.fetchall()
+                conn.close()
+                for i in lis:
+                    for k in range(0,i[2]):
+                        temp.append(str(i[1]))
+                word = temp[random.randint(0, len(temp)-1)]                
+            if word == '~end~':
+                return string.strip().capitalize()
+            string = string + ' ' + word
+            return twospeak(sfile, prevword, word, string)
+    except:
+        pass    
+    
+    
+def runRead(sfile, txt):
+    strlist = prepfilelist('toRead\\' + txt)
+    print('Starting read of {}... {} words found!'.format(txt, len(strlist)))
+    try:
+        read(sfile, strlist)
         print('File {} has been read into word list!'.format(txt))
     except:
         print('ERROR while reading {}...'.format(txt))    
 
-def novelize(numsentence, txtfile, maxSentPara = 8):
-    novel = '\t' + speak()
+#def paraoneword(numsentence, txtfile, maxSentPara = 8):
+    #novel = '\t' + onespeak()
+    #sen = 1
+    #for i in range(0,numsentence - 1):
+        #temp = onespeak()
+        #test = random.randint(sen, maxSentPara)
+        #if test == maxSentPara:
+            #novel = novel + '\n\n\t' + temp
+            #sen = 1
+        #else:
+            #novel = novel + ' ' + temp
+            #sen = sen + 1
+    #with open(txtfile, 'w') as f:
+        #f.write(novel)
+
+def paratwoword(sfile, numsentence, maxSentPara = 8):
+    novel = '\t' + twospeak(sfile)
     sen = 1
     for i in range(0,numsentence - 1):
-        temp = speak()
+        temp = twospeak(sfile)
         test = random.randint(sen, maxSentPara)
         if test == maxSentPara:
-            novel = novel + '\n\t' + temp
+            novel = novel + '\n\n\t' + temp
             sen = 1
         else:
             novel = novel + ' ' + temp
             sen = sen + 1
+    return novel
+
+def novelizetwoword(sfile, txtfile, numchaps, minchapsennum = 10, maxchapsennum = 50):
+    chap = 1
+    novel = '\t\t\tChapter 1\n\n\n' + paratwoword(sfile, random.randint(minchapsennum, maxchapsennum))
+    print('Chapter {} written!'.format(chap))
+    while chap < numchaps:
+        chap = chap + 1
+        novel = novel + '\n\n\n\t\t\tChapter {}\n\n\n'.format(chap) + paratwoword(sfile, random.randint(minchapsennum, maxchapsennum))
+        print('Chapter {} written!'.format(chap))
     with open(txtfile, 'w') as f:
         f.write(novel)
+    print('Novel written to {}'.format(txtfile))
 
-    
-if __name__ == '__main__':
-    
-    sfile = 'wordlist.snai'
-    
+def buildDatabase(sfile, readPath = 'toRead'):
     if not os.path.exists(sfile):
         conn = sqlite3.connect(sfile)
         c = conn.cursor()
-        c.execute('''CREATE TABLE words
+        c.execute('''CREATE TABLE oneword
                 (word text, subword text, count)''')
+        c.execute('''CREATE TABLE twoword
+                (word1 text, word2 text, subword text, count)''')
         conn.close()
     
-    sys.setrecursionlimit(5000)
-    
-    filelist = os.listdir(path='toRead')
+    filelist = os.listdir(path=readPath)
     
     readThreads = []
     
     for txt in filelist:
-        readThreads.append(threading.Thread(target=runRead, args = (txt,)))
+        readThreads.append(threading.Thread(target=runRead, args = (sfile, txt,)))
     
     for thread in readThreads:
         thread.start()
@@ -136,4 +225,10 @@ if __name__ == '__main__':
     for thread in readThreads:
         thread.join()    
     
-    print('All txt files read!')
+    print('All txt files read!')    
+
+    
+if __name__ == '__main__':
+    
+    #sfile = 'wordlist.snai'
+    sys.setrecursionlimit(5000)    
