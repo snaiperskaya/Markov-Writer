@@ -36,6 +36,7 @@ def cleantext(text):
         ('st', 'St'),
         ('jove', 'Jove'),
         ('christ', 'Christ'),
+        ('jesus', 'Jesus'),
         ('jekyll', 'Jekyll'),
         ('hyde', 'Hyde'),
         ('dorian gray', 'Dorian Gray'),
@@ -67,7 +68,8 @@ def cleantext(text):
         ('peleus', 'Peleus'),
         ('new york', 'New York')
     ]
-    for i in swaps:
+    print('\nPost-processing text...\n')
+    for i in tqdm(swaps):
         text = text.replace(' {} '.format(i[0]), ' {} '.format(i[1]))
         text = text.replace(" {}'".format(i[0]), " {}'".format(i[1]))
         text = text.replace(" {};".format(i[0]), " {};".format(i[1]))
@@ -80,23 +82,37 @@ def cleantext(text):
     return text
 
 
-def prepstrlist(string):
+def prepstrlist(oldstring):
+    string = ''
+    for i in oldstring:
+        if ord(i) in range(32, 127):
+            string = string + i
+        else:
+            string = string + ' '
+    #string = string.join([i for i in oldstring if ord(i) in range(32, 127)])
     string = string.replace('\n',' ')
     string = string.replace(" '", " ")
     string = string.replace("' ", " ")
-    rem = ['_', '*', '@', '(', ')', '[', ']', '{', '}', '\t', '"']
+    rem = [' . ', ' , ', '_', '*', '@', '(', ')', '[', ']', '{', '}', '\t', '\"', '~', '<', '>', '+', '=', '^', '\`']
     for i in rem:
-        string = string.replace(i, '')
-    gap = ['.', ',', '!', '?', ';', ':', '&']
+        string = string.replace(i, ' ')
+    gap = [',', '!', '?', ';', ':']
     for i in gap:
         string = string.replace(' ' + i, i)
     for i in gap:
         string = string.replace(i, i + ' ')
-    for i in range(0,25):
+    for i in range(0,50):
         string = string.replace('  ',' ')
         string = string.replace('--','-')
     string = string.strip()
     lis = string.split(' ')
+    pop = []
+    for i in range(0, len(lis) - 1):
+        if lis[i].strip() in ['', ' ', '.']:
+            pop.append(i)
+    pop.reverse()
+    for i in pop:
+        lis.pop(i)
     return lis
 
 
@@ -109,13 +125,14 @@ def buildLocalWordDicts(sfile):
     d3 = {}
     d2 = {}
     d1 = {}
+    print('Building in-memory dictionary....')
     conn = sqlite3.connect(sfile)
     c = conn.cursor()
     c.execute("SELECT * FROM threeword")
     SQLthree = {}
     threetemp = c.fetchall()
     conn.close()
-    for i in threetemp:
+    for i in tqdm(threetemp):
         d3[(i[0], i[1], i[2], i[3])] = int(i[4])
         d2[(i[1], i[2], i[3])] = int(i[4])
         d1[(i[2], i[3])] = int(i[4])
@@ -139,29 +156,32 @@ def read(strlist, dthree):
     prevword3 = '~start~'
     prevword2 = '~start~'
     prevword = '~start~'
+    senprev3 = '~start~'
+    senprev2 = '~start~'
+    senprev1 = '~start~'
     for i in strlist:
-        #i = i.lstrip("\'").rstrip("\'") 
+        if i.isupper():
+            i = i.lower()
         try:
             dthree[(prevword3.lower(), prevword2.lower(), prevword.lower(), i)] = dthree[(prevword3.lower(), prevword2.lower(), prevword.lower(), i)] + 1
         except:
             dthree[(prevword3.lower(), prevword2.lower(), prevword.lower(), i)] = 1
-        #print(i)
-        if i[-1] in ['.','?','!'] and i.lower() not in ['mr.', 'mrs.', 'st.', 'rd.', 'ln.', 'ct.', 'dr.', 'prof.']:
+        if senprev3 != prevword3:
             try:
-                dthree[(prevword2.lower(), prevword.lower(), i.lower(), '~end~')] = dthree[(prevword2.lower(), prevword.lower(), i.lower(), '~end~')] + 1
+                dthree[(senprev3.lower(), senprev2.lower(), senprev1.lower(), i)] = dthree[(senprev3.lower(), senprev2.lower(), senprev1.lower(), i)] + 1
             except:
-                dthree[(prevword2.lower(), prevword.lower(), i.lower(), '~end~')] = 1
-            prevword = '~start~'
-            prevword2 = '~start~'
-            prevword3 = '~start~'
+                dthree[(senprev3.lower(), senprev2.lower(), senprev1.lower(), i)] = 1            
+        if i[-1] in ['.','?','!'] and i.lower() not in ['mr.', 'mrs.', 'st.', 'rd.', 'ln.', 'ct.', 'dr.', 'prof.', 'mt.']:
+            senprev1 = '~start~'
+            senprev2 = '~start~'
+            senprev3 = '~start~'
         else:
-            prevword3 = prevword2
-            prevword2 = prevword
-            prevword = i
-    try:
-        dthree[(prevword3.lower(), prevword2.lower(), prevword.lower(), '~end~')] = dthree[(prevword3.lower(), prevword2.lower(), prevword.lower(), '~end~')] + 1
-    except:
-        dthree[(prevword3.lower(), prevword2.lower(), prevword.lower(), '~end~')] = 1
+            senprev3 = senprev2
+            senprev2 = senprev1
+            senprev1 = i
+        prevword3 = prevword2
+        prevword2 = prevword
+        prevword = i        
     return dthree
 
 
@@ -213,95 +233,116 @@ def buildDatabase(sfile, readPath = 'toRead'):
 
 ### -------- 3RD GEN SQLITE WRITE VOODOO -------- ###
 
-def tryspeak(d3, d2, d1):
-    done = False
-    while done != True:
-        try:
-            words = speak(d3, d2, d1)
-            done = True
-        except:
-            continue
-    return words
-    
-
-def speak(d3, d2, d1, prevword3 = '~start', prevword2 = '~start~', prevword = '~start~', string = ''):
-    if prevword == '~end~':
-        return string.strip().capitalize()
+def gen3Word(d3, d2, d1, prevword3 = '~start', prevword2 = '~start~', prevword = '~start~'):
+    if prevword != '~start~':
+        prevword = prevword.lower()
+    lis = []
+    for i in d3.keys():
+        if (i[0], i[1], i[2]) == (prevword3, prevword2, prevword):
+            lis.append((i[3], d3[i]))
+    temp = []
+    if len(lis) > 0:
+        for i in lis:
+            for k in range(0,i[1]):
+                temp.append(str(i[0]))
+        word = temp[random.randint(0, len(temp)-1)]
+        return (prevword2, prevword, word) 
     else:
-        if prevword != '~start~':
-            prevword = prevword.lower()
-        lis = []
-        for i in d3.keys():
-            if (i[0], i[1], i[2]) == (prevword3, prevword2, prevword):
-                lis.append((i[3], d3[i]))
-        temp = []
-        if len(lis) > 0:
-            for i in lis:
-                for k in range(0,i[1]):
-                    temp.append(str(i[0]))
-            word = temp[random.randint(0, len(temp)-1)]
-        else:
-            lis = []
-            for i in d2.keys():
-                if (i[0], i[1]) == (prevword2, prevword):
-                    lis.append((i[2], d2[i]))
-            temp = []
-            if len(lis) > 0:
-                for i in lis:
-                    for k in range(0,i[1]):
-                        temp.append(str(i[0]))
-                word = temp[random.randint(0, len(temp)-1)]
-            else:
-                lis = []
-                for i in d1.keys():
-                    if i[0] == prevword:
-                        lis.append((i[1], d1[i]))
-                temp = []
-                if len(lis) > 0:
-                    for i in lis:
-                        for k in range(0,i[1]):
-                            temp.append(str(i[0]))
-                    word = temp[random.randint(0, len(temp)-1)]         
-        if word == '~end~':
-            return string.strip().capitalize()
-        string = string + ' ' + word
-        return speak(d3, d2, d1, prevword2, prevword, word, string)
+        return gen2Word(d2, d1, prevword2, prevword)   
 
 
-def paraGen(d3, d2, d1, numsentence, maxSentPara):
-    novel = '\t' + tryspeak(d3, d2, d1)
+def gen2Word(d2, d1, prevword2 = '~start~', prevword = '~start~'):
+    if prevword != '~start~':
+        prevword = prevword.lower()    
+    lis = []
+    for i in d2.keys():
+        if (i[0], i[1]) == (prevword2, prevword):
+            lis.append((i[2], d2[i]))
+    temp = []
+    if len(lis) > 0:
+        for i in lis:
+            for k in range(0,i[1]):
+                temp.append(str(i[0]))
+        word = temp[random.randint(0, len(temp)-1)]
+        return (prevword2, prevword, word) 
+    else:
+        return gen1Word(d1, prevword2, prevword)        
+
+
+def gen1Word(d1, prevword2 = '~start~', prevword = '~start~'):
+    if prevword != '~start~':
+        prevword = prevword.lower()       
+    lis = []
+    for i in d1.keys():
+        if i[0] == prevword:
+            lis.append((i[1], d1[i]))
+    temp = []
+    if len(lis) > 0:
+        for i in lis:
+            for k in range(0,i[1]):
+                temp.append(str(i[0]))
+        word = temp[random.randint(0, len(temp)-1)]
+    return (prevword2, prevword, word)     
+
+
+def genWord(d3, d2, d1, prevword3 = '~start', prevword2 = '~start~', prevword = '~start~', wordtest = 3):
+    if wordtest == 3:
+        return gen3Word(d3, d2, d1, prevword3, prevword2, prevword)
+    elif wordtest == 2:
+        return gen2Word(d2, d1, prevword2, prevword)
+    elif wordtest == 1:
+        return gen1Word(d1, prevword2, prevword)
+    else:
+        return gen3Word(d3, d2, d1, prevword3, prevword2, prevword)
+
+
+def paraGen(d3, d2, d1, numsentence, maxSentPara, wordtest = 3):
+    print("Generating {} sentences...".format(numsentence))
+    words = genWord(d3, d2, d1, wordtest=wordtest)
+    word = words[2]
+    novel = '\t' + word.capitalize()
+    totsen = 0
     sen = 1
-    for i in tqdm(range(0,numsentence - 1)):
-        temp = tryspeak(d3, d2, d1)
-        test = random.randint(sen, maxSentPara)
-        if test == maxSentPara:
-            novel = novel + '\n\n\t' + temp
-            sen = 1
+    senup = False
+    while totsen < numsentence:
+        words = genWord(d3, d2, d1, words[0], words[1], words[2], wordtest=wordtest)
+        word = words[2]       
+        if senup == True:
+            test = random.randint(sen, maxSentPara)
+            if test == maxSentPara:
+                novel = novel + '\n\n\t' + word.capitalize()
+                sen = 1
+            else:
+                novel = novel + ' ' + word.capitalize()
+            senup = False
         else:
-            novel = novel + ' ' + temp
+            novel = novel + ' ' + word
+        if word[-1] in ['.','?','!'] and word.lower() not in ['mr.', 'mrs.', 'st.', 'rd.', 'ln.', 'ct.', 'dr.', 'prof.', 'mt.']:
             sen = sen + 1
+            totsen = totsen + 1
+            senup = True
     return novel
 
 
-def novelize(sfile, txtfile, numchaps, minchapsennum = 10, maxchapsennum = 50, maxSentPara = 8):
+def novelize(sfile, txtfile, numchaps, minchapsennum = 10, maxchapsennum = 50, maxSentPara = 8, wordtest = 3):
     dicts = buildLocalWordDicts(sfile)
     d3 = dicts[0]
     d2 = dicts[1]
     d1 = dicts[2]
-    print("Starting Novel write of {} chapters of {}-{} sentences each with paragraphs up to {} sentences long...".format(numchaps, minchapsennum, maxchapsennum, maxSentPara))
+    print("\nStarting Novel write of {} chapters of {}-{} sentences each with paragraphs up to {} sentences long...\n".format(numchaps, minchapsennum, maxchapsennum, maxSentPara))
     chap = 1
     print('Chapter {} processing...'.format(chap))
-    novel = '\t\t\t\tChapter 1\n\n\n' + paraGen(d3, d2, d1, random.randint(minchapsennum, maxchapsennum), maxSentPara)
-    print('Chapter {} written!'.format(chap))
+    novel = '\t\t\t\tChapter 1\n\n\n' + paraGen(d3, d2, d1, random.randint(minchapsennum, maxchapsennum), maxSentPara, wordtest)
+    print('Chapter {} written!\n'.format(chap))
     while chap < numchaps:
         chap = chap + 1
         print('\nChapter {} processing...'.format(chap))
-        novel = novel + '\n\n\n\t\t\t\tChapter {}\n\n\n'.format(chap) + paraGen(d3, d2, d1, random.randint(minchapsennum, maxchapsennum), maxSentPara)
-        print('Chapter {} written!'.format(chap))
+        novel = novel + '\n\n\n\t\t\t\tChapter {}\n\n\n'.format(chap) + paraGen(d3, d2, d1, random.randint(minchapsennum, maxchapsennum), maxSentPara, wordtest)
+        print('Chapter {} written!\n'.format(chap))
     novel = cleantext(novel)
     with open(txtfile, 'w', encoding='utf8') as f:
         f.write(novel)
-    print('Novel written to {}'.format(txtfile))
+    print('Novel written to {}\n'.format(txtfile))
 
    
 
@@ -310,9 +351,11 @@ def novelize(sfile, txtfile, numchaps, minchapsennum = 10, maxchapsennum = 50, m
 if __name__ == '__main__':
     sys.setrecursionlimit(5000)
     
-    sfile = "F:\\sqllite\\threewordlist.snai" #Running SQLite file on a persistent RAMDisk
+    sfile = "newthreewordlist.snai"
+    #sfile = "F:\\sqllite\\newthreewordlist.snai" #Running SQLite file on a persistent RAMDisk
     buildDatabase(sfile)
     
-    novelize(sfile, 'Output txts\\threetest03.txt', 4, maxchapsennum=100, maxSentPara=10)
+    novelize(sfile, 'Output txts\\newthreetest10.txt', 3, minchapsennum=1, maxchapsennum=100, maxSentPara=10)
+    novelize(sfile, 'Output txts\\newtwo03.txt', 3, minchapsennum=1, maxchapsennum=100, maxSentPara=10, wordtest=2)
     
     input()
