@@ -3,6 +3,7 @@ import random
 import sys
 import os
 import time
+import datetime
 from tqdm import *
 
 
@@ -89,11 +90,10 @@ def prepstrlist(oldstring):
             string = string + i
         else:
             string = string + ' '
-    #string = string.join([i for i in oldstring if ord(i) in range(32, 127)])
     string = string.replace('\n',' ')
     string = string.replace(" '", " ")
     string = string.replace("' ", " ")
-    rem = [' . ', ' , ', '_', '*', '@', '(', ')', '[', ']', '{', '}', '\t', '\"', '~', '<', '>', '+', '=', '^', '\`']
+    rem = [' . ', ' , ', '_', '*', '@', '(', ')', '[', ']', '{', '}', '\t', '\"', '~', '<', '>', '+', '=', '^', '\`', '-']
     for i in rem:
         string = string.replace(i, ' ')
     gap = [',', '!', '?', ';', ':']
@@ -121,6 +121,7 @@ def prepfilelist(txtfile):
     string = fi.read()
     return prepstrlist(string)
 
+
 def buildLocalWordDicts(sfile):
     d3 = {}
     d2 = {}
@@ -133,10 +134,29 @@ def buildLocalWordDicts(sfile):
     threetemp = c.fetchall()
     conn.close()
     for i in tqdm(threetemp):
-        d3[(i[0], i[1], i[2], i[3])] = int(i[4])
-        d2[(i[1], i[2], i[3])] = int(i[4])
-        d1[(i[2], i[3])] = int(i[4])
+        try:
+            d3[(i[0], i[1], i[2])].extend([(i[3], int(i[4]))])
+        except:
+            d3[(i[0], i[1], i[2])] = [(i[3], int(i[4]))]
+        
+        try:
+            d2[(i[1], i[2])].extend([(i[3], int(i[4]))])
+        except:
+            d2[(i[1], i[2])] = [(i[3], int(i[4]))]        
+        
+        try:
+            d1[(i[2])].extend([(i[3], int(i[4]))])
+        except:
+            d1[(i[2])] = [(i[3], int(i[4]))]
+        
     return (d3, d2, d1)
+
+
+def getNewFile(folder):
+    filename = folder + '\\NewText_' + datetime.datetime.now().isoformat('_')
+    filename = filename.replace(':', '-')
+    filename = filename.split('.')[0]
+    return filename + '.txt'
 
 
 ### -------- 3RD GEN SQLITE BUILD VOODOO -------- ###
@@ -144,12 +164,8 @@ def buildLocalWordDicts(sfile):
 def runRead(txt, dthree):
     strlist = prepfilelist('toRead\\' + txt)
     print('Reading {}... {} words found!'.format(txt, len(strlist)))
-    #try:
     dthree = read(strlist, dthree)
     return dthree
-        #print('File {} has been read into word list!'.format(txt))
-    #except:
-        #print('ERROR while reading {}...'.format(txt))  
 
 
 def read(strlist, dthree):
@@ -171,7 +187,7 @@ def read(strlist, dthree):
                 dthree[(senprev3.lower(), senprev2.lower(), senprev1.lower(), i)] = dthree[(senprev3.lower(), senprev2.lower(), senprev1.lower(), i)] + 1
             except:
                 dthree[(senprev3.lower(), senprev2.lower(), senprev1.lower(), i)] = 1            
-        if i[-1] in ['.','?','!'] and i.lower() not in ['mr.', 'mrs.', 'st.', 'rd.', 'ln.', 'ct.', 'dr.', 'prof.', 'mt.']:
+        if i[-1] in ['.','?','!'] and i.lower() not in ['mr.', 'mrs.', 'st.', 'rd.', 'ln.', 'ct.', 'dr.', 'prof.', 'mt.', 'm.', 'd.', 'etc.', 'ph.']:
             senprev1 = '~start~'
             senprev2 = '~start~'
             senprev3 = '~start~'
@@ -237,9 +253,10 @@ def gen3Word(d3, d2, d1, prevword3 = '~start', prevword2 = '~start~', prevword =
     if prevword != '~start~':
         prevword = prevword.lower()
     lis = []
-    for i in d3.keys():
-        if (i[0], i[1], i[2]) == (prevword3, prevword2, prevword):
-            lis.append((i[3], d3[i]))
+    try:
+        lis = d3[(prevword3, prevword2, prevword)]
+    except:
+        lis = []
     temp = []
     if len(lis) > 0:
         for i in lis:
@@ -255,9 +272,10 @@ def gen2Word(d2, d1, prevword2 = '~start~', prevword = '~start~'):
     if prevword != '~start~':
         prevword = prevword.lower()    
     lis = []
-    for i in d2.keys():
-        if (i[0], i[1]) == (prevword2, prevword):
-            lis.append((i[2], d2[i]))
+    try:
+        lis = d2[(prevword2, prevword)]
+    except:
+        lis = []
     temp = []
     if len(lis) > 0:
         for i in lis:
@@ -273,9 +291,10 @@ def gen1Word(d1, prevword2 = '~start~', prevword = '~start~'):
     if prevword != '~start~':
         prevword = prevword.lower()       
     lis = []
-    for i in d1.keys():
-        if i[0] == prevword:
-            lis.append((i[1], d1[i]))
+    try:
+        lis = d1[(prevword)]
+    except:
+        lis = []
     temp = []
     if len(lis) > 0:
         for i in lis:
@@ -317,7 +336,7 @@ def paraGen(d3, d2, d1, numsentence, maxSentPara, wordtest = 3):
             senup = False
         else:
             novel = novel + ' ' + word
-        if word[-1] in ['.','?','!'] and word.lower() not in ['mr.', 'mrs.', 'st.', 'rd.', 'ln.', 'ct.', 'dr.', 'prof.', 'mt.']:
+        if word[-1] in ['.','?','!'] and word.lower() not in ['mr.', 'mrs.', 'st.', 'rd.', 'ln.', 'ct.', 'dr.', 'prof.', 'mt.', 'm.', 'd.', 'etc.', 'ph.']:
             sen = sen + 1
             totsen = totsen + 1
             senup = True
@@ -351,11 +370,11 @@ def novelize(sfile, txtfile, numchaps, minchapsennum = 10, maxchapsennum = 50, m
 if __name__ == '__main__':
     sys.setrecursionlimit(5000)
     
-    sfile = "newthreewordlist.snai"
-    #sfile = "F:\\sqllite\\newthreewordlist.snai" #Running SQLite file on a persistent RAMDisk
-    buildDatabase(sfile)
+    sfile = "doublenewthreewordlist.snai"
+    #sfile = "F:\\sqllite\\newnewthreewordlist.snai" #Running SQLite file on a persistent RAMDisk
+    #buildDatabase(sfile) #Uncomment to build a new database
     
-    novelize(sfile, 'Output txts\\newthreetest10.txt', 3, minchapsennum=1, maxchapsennum=100, maxSentPara=10)
-    novelize(sfile, 'Output txts\\newtwo03.txt', 3, minchapsennum=1, maxchapsennum=100, maxSentPara=10, wordtest=2)
+    novelize(sfile, getNewFile('Output txts'), 4, minchapsennum=1, maxchapsennum=100, maxSentPara=10)
+    #novelize(sfile, 'Output txts\\newtwo03.txt', 3, minchapsennum=1, maxchapsennum=100, maxSentPara=10, wordtest=2)
     
     input()
