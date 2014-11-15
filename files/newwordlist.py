@@ -153,10 +153,10 @@ def buildLocalWordDicts(sfile):
 
 
 def getNewFile(folder):
-    filename = folder + '\\NewText_' + datetime.datetime.now().isoformat('_')
+    filename = '\\NewText_' + datetime.datetime.now().isoformat('_')
     filename = filename.replace(':', '-')
-    filename = filename.split('.')[0]
-    return filename + '.txt'
+    filename = filename.replace('.', '-')
+    return folder + filename + '.txt'
 
 
 ### -------- 3RD GEN SQLITE BUILD VOODOO -------- ###
@@ -187,7 +187,7 @@ def read(strlist, dthree):
                 dthree[(senprev3.lower(), senprev2.lower(), senprev1.lower(), i)] = dthree[(senprev3.lower(), senprev2.lower(), senprev1.lower(), i)] + 1
             except:
                 dthree[(senprev3.lower(), senprev2.lower(), senprev1.lower(), i)] = 1            
-        if i[-1] in ['.','?','!'] and i.lower() not in ['mr.', 'mrs.', 'st.', 'rd.', 'ln.', 'ct.', 'dr.', 'prof.', 'mt.', 'm.', 'd.', 'etc.', 'ph.']:
+        if i[-1] in ['.','?','!'] and i.lower() not in ['mr.', 'mrs.', 'st.', 'rd.', 'ln.', 'ct.', 'dr.', 'prof.', 'mt.', 'm.', 'd.', 'etc.', 'ph.', 'hon.']:
             senprev1 = '~start~'
             senprev2 = '~start~'
             senprev3 = '~start~'
@@ -336,15 +336,14 @@ def paraGen(d3, d2, d1, numsentence, maxSentPara, wordtest = 3):
             senup = False
         else:
             novel = novel + ' ' + word
-        if word[-1] in ['.','?','!'] and word.lower() not in ['mr.', 'mrs.', 'st.', 'rd.', 'ln.', 'ct.', 'dr.', 'prof.', 'mt.', 'm.', 'd.', 'etc.', 'ph.']:
+        if word[-1] in ['.','?','!'] and word.lower() not in ['mr.', 'mrs.', 'st.', 'rd.', 'ln.', 'ct.', 'dr.', 'prof.', 'mt.', 'm.', 'd.', 'etc.', 'ph.', 'hon.']:
             sen = sen + 1
             totsen = totsen + 1
             senup = True
     return novel
 
 
-def novelize(sfile, txtfile, numchaps, minchapsennum = 10, maxchapsennum = 50, maxSentPara = 8, wordtest = 3):
-    dicts = buildLocalWordDicts(sfile)
+def novelize(dicts, txtfile, numchaps, minchapsennum = 10, maxchapsennum = 50, maxSentPara = 8, wordtest = 3):
     d3 = dicts[0]
     d2 = dicts[1]
     d1 = dicts[2]
@@ -364,17 +363,20 @@ def novelize(sfile, txtfile, numchaps, minchapsennum = 10, maxchapsennum = 50, m
     print('Novel written to {}\n'.format(txtfile))
 
    
-
+def fullNovelize(sfile, txtfile, numchaps, minchapsennum = 10, maxchapsennum = 50, maxSentPara = 8, wordtest = 3):
+    dicts = buildLocalWordDicts(sfile)
+    novelize(dicts, txtfile, numchaps, minchapsennum, maxchapsennum, maxSentPara, wordtest)
 
 
 if __name__ == '__main__':
     sys.setrecursionlimit(5000)
     
-    sfile = "doublenewthreewordlist.snai"
-    #sfile = "F:\\sqllite\\newnewthreewordlist.snai" #Running SQLite file on a persistent RAMDisk
+    #sfile = "doublenewthreewordlist.snai"
+    sfile = "F:\\sqllite\\newnewthreewordlist.snai" #Running SQLite file on a persistent RAMDisk
     #buildDatabase(sfile) #Uncomment to build a new database
-    
-    novelize(sfile, getNewFile('Output txts'), 4, minchapsennum=1, maxchapsennum=100, maxSentPara=10)
+    dicts = buildLocalWordDicts(sfile)
+    for i in range(0,5):
+        novelize(dicts, getNewFile('D:\\Google Drive\\Generated Texts'), 4, minchapsennum=1, maxchapsennum=100, maxSentPara=10)
     #novelize(sfile, 'Output txts\\newtwo03.txt', 3, minchapsennum=1, maxchapsennum=100, maxSentPara=10, wordtest=2)
     
     input()
