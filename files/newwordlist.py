@@ -1,3 +1,33 @@
+#!python3
+
+#    CODEE PY - Text generation through learned word order using Markov Chaining principles.
+#    Copyright (C) 2014  C.S.Putnam
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#
+#
+#    *** LICENSE file for this project can be found at https://raw.githubusercontent.com/snaiperskaya/Markov-Writer/master/LICENSE
+#
+#    Contact via email available at codee.py.books@gmail.com
+
+__author__ = 'C.S.Putnam'
+__version__ = '1.0.0'
+
+
+### -------- BEGIN PROGRAM -------- ###
+
 import sqlite3
 import random
 import sys
@@ -6,9 +36,42 @@ import time
 import datetime
 from tqdm import *
 
-nonSenEnds = ['mr.', 'mrs.', 'st.', 'rd.', 'ln.', 'ct.', 'dr.', 'prof.', 'mt.', 'etc.', 'ph.', 'hon.', 'seq.', 'a.', 'b.', 'c.', 'd.', 'e.', 'f.', 'g.', 'h.', 'j.', 'k.', 'l.', 'm.', 'n.', 'o.', 'p.', 'q.', 'r.', 's.', 't.', 'u.', 'v.', 'w.', 'x.', 'y.', 'z.']
+nonSenEnds = ['mr.', 
+              'mrs.', 
+              'st.', 
+              'rd.', 
+              'ln.', 
+              'ct.', 
+              'dr.', 
+              'prof.', 
+              'mt.', 
+              'etc.', 
+              'ph.', 
+              'hon.', 
+              'seq.', 
+              'lat.', 
+              'col.', 
+              'am.', 
+              'pm.', 
+              'a.m.', 
+              'p.m.', 
+              'co.',
+              'exod.',
+              'eq.',
+              'i.e.',
+              'e.g.',
+              'min.',
+              'hr.',
+              'sec.',
+              'ft.',
+              'in.',
+              'jan.', 'feb.', 'mar.', 'apr.', 'jun.', 'jul.', 'aug.', 'sept.', 'oct.', 'nov.', 'dec.',
+              'mon.', 'tues.', 'wed.', 'thurs.', 'fri.',
+              '1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.', '11.', '12.', '13.', '14.', '15.', '16.', '17.', '18.', '19.', '20.', '21.', '22.', '23.', '24.', '25.', '26.', '27.', '28.', '29.', '30.', '31.',
+              'ii.', 'iii.', 'iv.', 'v.', 'vi.', 'vii.', 'viii.', 'ix.', 'xi.', 'xii.', 'xiii.', 'xiv.', 'xv.',  
+              'a.', 'b.', 'c.', 'd.', 'e.', 'f.', 'g.', 'h.', 'j.', 'k.', 'l.', 'm.', 'n.', 'o.', 'p.', 'q.', 'r.', 's.', 't.', 'u.', 'v.', 'w.', 'x.', 'y.', 'z.']
 
-genWeights = [2, 3, 4, 5, 2, 3, 4, 5, 3, 4, 5, 4, 5, 5, 5, 4, 3, 5, 4, 5]
+genWeights = [5, 2, 3, 5, 4, 5, 2, 3, 4, 5, 3, 4, 5, 4, 5, 4, 5, 3, 5, 4, 5, 4, 5]
 
 ### -------- HELPER FUNCTIONS -------- ###
 
@@ -70,7 +133,53 @@ def cleantext(text):
         ('menestheus', 'Menestheus'),
         ('peteos', 'Peteos'),
         ('peleus', 'Peleus'),
-        ('new york', 'New York')
+        ('new york', 'New York'),
+        ('can t', 'can\'t'),
+        ('I m', 'I\'m'),
+        ('I ve', 'I\'ve'),
+        ('I d', 'I\'d'),
+        ('I ll', 'I\'ll'),
+        ('could ve', 'could\'ve'),
+        ('couldn t', 'couldn\'t'),
+        ('would ve', 'would\'ve'),
+        ('wouldn t', 'wouldn\'t'),
+        ('should ve', 'should\'ve'),
+        ('shouldn t', 'shouldn\'t'),
+        ('won t', 'won\'t'),
+        ('to day', 'today'),
+        ('to morrow', 'tomorrow'),
+        ('you ll', 'you\'ll'),
+        ('ma am', 'ma\'am'),
+        ('didn t', 'didn\'t'),
+        ('who d', 'who\'d'),
+        ('he d', 'he\'d'),
+        ('she d', 'she\'d'),
+        ('we re', 'we\'re'),
+        ('c mon', 'c\'mon'),
+        ('you ve', 'you\'ve'),
+        ('they re', 'they\'re'),
+        ('Could ve', 'Could\'ve'),
+        ('Couldn t', 'Couldn\'t'),
+        ('Would ve', 'Would\'ve'),
+        ('Wouldn t', 'Wouldn\'t'),
+        ('Should ve', 'Should\'ve'),
+        ('Shouldn t', 'Shouldn\'t'),
+        ('Won t', 'Won\'t'),
+        ('To day', 'Today'),
+        ('To morrow', 'Tomorrow'),
+        ('You ll', 'You\'ll'),
+        ('Ma am', 'Ma\'am'),
+        ('Didn t', 'Didn\'t'),
+        ('Who d', 'Who\'d'),
+        ('He d', 'He\'d'),
+        ('She d', 'She\'d'),
+        ('We re', 'We\'re'),
+        ('C mon', 'C\'mon'),
+        ('You ve', 'You\'ve'),
+        ('They re', 'They\'re'),        
+        ('I.e', 'i.e'),
+        ('s', '\'s'),
+        ('m', 'M')
     ]
     print('\nPost-processing text...\n')
     for i in swaps:
@@ -96,9 +205,9 @@ def prepstrlist(oldstring):
     string = string.replace('\n',' ')
     string = string.replace(" '", " ")
     string = string.replace("' ", " ")
-    rem = [' . ', ' , ', '_', '*', '@', '(', ')', '[', ']', '{', '}', '\t', '\"', '~', '<', '>', '+', '=', '^', '\`', '-']
+    rem = ['<i>', '</i>', '<b>', '</b>', ' . ', ' , ', '_', '*', '@', '(', ')', '[', ']', '{', '}', '\t', '\"', '~', '<', '>', '+', '=', '^', '\`', '-']
     for i in rem:
-        string = string.replace(i, ' ')
+        string = string.replace(i, ' ')  
     gap = [',', '!', '?', ';', ':']
     for i in gap:
         string = string.replace(' ' + i, i)
@@ -106,12 +215,11 @@ def prepstrlist(oldstring):
         string = string.replace(i, i + ' ')
     for i in range(0,50):
         string = string.replace('  ',' ')
-        string = string.replace('--','-')
     string = string.strip()
     lis = string.split(' ')
     pop = []
     for i in range(0, len(lis) - 1):
-        if lis[i].strip() in ['', ' ', '.']:
+        if lis[i].strip() in ['', ' ', '.', '-', '...', '\'']:
             pop.append(i)
     pop.reverse()
     for i in pop:
@@ -198,7 +306,7 @@ def read(strlist, dwords):
         if i.isupper():
             i = i.lower()
         try:
-            dwords[(prevword5.lower(), prevword4.lower(), prevword3.lower(), prevword2.lower(), prevword.lower(), i)] = dwords[(prevword3.lower(), prevword2.lower(), prevword.lower(), i)] + 1
+            dwords[(prevword5.lower(), prevword4.lower(), prevword3.lower(), prevword2.lower(), prevword.lower(), i)] = dwords[(prevword5.lower(), prevword4.lower(), prevword3.lower(), prevword2.lower(), prevword.lower(), i)] + 1
         except:
             dwords[(prevword5.lower(), prevword4.lower(), prevword3.lower(), prevword2.lower(), prevword.lower(), i)] = 1
         if senprev5 != prevword5:
@@ -254,7 +362,7 @@ def buildDatabase(sfile, readPath = 'toRead'):
     for i in dwords.keys():
         try:
             count = SQL[i]
-            wordupdate.append((i[0], i[1], i[2], i[3], d[4], d[5], dwords[i] + count))
+            wordupdate.append((i[0], i[1], i[2], i[3], i[4], i[5], dwords[i] + count))
         except:
             wordnew.append((i[0], i[1], i[2], i[3], i[4], i[5], dwords[i]))
     print('Done!')
@@ -364,7 +472,10 @@ def gen1Word(d1, prevword4 = '~start~', prevword3 = '~start', prevword2 = '~star
             for k in range(0,i[1]):
                 temp.append(str(i[0]))
         word = temp[random.randint(0, len(temp)-1)]
-    return (prevword4, prevword3, prevword2, prevword, word)     
+    else:
+        print('ERROR: No Viable Word to Use. Inserting "and" to try to progress...')
+        word = 'and'
+    return (prevword4, prevword3, prevword2, prevword, word)
 
 
 def genWord(d5, d4, d3, d2, d1, prevword5 = '~start~', prevword4 = '~start', prevword3 = '~start', prevword2 = '~start~', prevword = '~start~'):
@@ -445,11 +556,11 @@ if __name__ == '__main__':
     genBooks = 'Book Runs'
     
     #sfile = "5wordlist.snai"
-    sfile = "F:\\sqllite\\5wordlist.snai" #Running SQLite file on a persistent RAMDisk
-    #buildDatabase(sfile) #Uncomment to build a new database
+    sfile = "F:\\sqllite\\cleanwordlist.snai" #Running SQLite file on a persistent RAMDisk
+    buildDatabase(sfile) #Uncomment to build a new database
     dicts = buildLocalWordDicts(sfile)
     for i in range(0,5):
         novelize(dicts, getNewFile(testFiles), 4, minchapsennum=1, maxchapsennum=100, maxSentPara=10)
     for i in range(0,5):
-        novelize(dicts, getNewFile(genBooks), 16, minchapsennum=1, maxchapsennum=150, maxSentPara=12)
+        novelize(dicts, getNewFile(genBooks), 18, minchapsennum=1, maxchapsennum=175, maxSentPara=10)
     input()
